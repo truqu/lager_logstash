@@ -14,6 +14,8 @@
 -export([ receives_logs/1
         , respects_level/1
         , init_options/1
+        , handles_pids/1
+        , handles_pid_as_string/1
         ]).
 
 %%==============================================================================
@@ -24,6 +26,8 @@ all() ->
   [ receives_logs
   , respects_level
   , init_options
+  , handles_pids
+  , handles_pid_as_string
   ].
 
 init_per_suite(Config) ->
@@ -55,11 +59,12 @@ receives_logs(Config) ->
 
 respects_level(Config) ->
   Socket = ?config(socket, Config),
-  ShouldReceive = log(info, "gogogo"),
+  ShouldReceive1 = log(info, "gogogo"),
   lager:set_loglevel(handler_id(), error),
   ShouldNotReceive = log(info, "noooo"),
+  ShouldReceive2 = log(emergency, "yep"),
   Logs = flush(Socket),
-  assert_received(ShouldReceive, Logs),
+  assert_received([ShouldReceive1, ShouldReceive2], Logs),
   assert_not_received(ShouldNotReceive, Logs).
 
 init_options(_) ->
@@ -74,6 +79,19 @@ init_options(_) ->
   {error, _} = lager_logstash_backend:init([GoodPort, GoodHost, BadFields]),
   {ok, _} = lager_logstash_backend:init([GoodPort, GoodHost]),
   {ok, _} = lager_logstash_backend:init([GoodPort, GoodHost, GoodFields]).
+
+handles_pids(Config) ->
+  Socket = ?config(socket, Config),
+  LogRef = log(info, "with pid", [{pid, self()}]),
+  Logs = flush(Socket),
+  assert_received(LogRef, Logs).
+
+handles_pid_as_string(Config) ->
+  Socket = ?config(socket, Config),
+  PidString = pid_to_list(self()),
+  LogRef = log(info, "with pid as string", [{pid, PidString}]),
+  Logs = flush(Socket),
+  assert_received(LogRef, Logs).
 
 %%==============================================================================
 %% Private functions
@@ -123,8 +141,12 @@ extract_logrefs(Logs) ->
 
 -spec log(lager:log_level(), string()) -> pos_integer().
 log(Level, Message) ->
+  log(Level, Message, []).
+
+-spec log(lager:log_level(), string(), [tuple()]) -> pos_integer().
+log(Level, Message, Extra) ->
   LogRef = erlang:unique_integer([positive, monotonic]),
-  lager:log(Level, [{test_log_ref, LogRef}], Message),
+  lager:log(Level, [{test_log_ref, LogRef} | Extra], Message),
   LogRef.
 
 -spec start_lager_handler(inet:port_number()) -> ok.

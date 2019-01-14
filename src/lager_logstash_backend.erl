@@ -82,11 +82,35 @@ code_change(_, State, _) ->
 format_data(Message, Fields) ->
   Metadata = lager_msg:metadata(Message),
   Defaults = [{severity, lager_msg:severity(Message)}],
-  AllFields = Defaults ++ Metadata ++ Fields,
+  AllFields = Defaults ++ safe_fields(Metadata) ++ Fields,
   #{ fields => AllFields
    , '@timestamp' => format_timestamp(lager_msg:timestamp(Message))
    , message => list_to_binary(lager_msg:message(Message))
    }.
+
+-spec safe_fields([{term(), term()}]) -> [{atom() | binary(), jsx:json_term()}].
+safe_fields(KVPairs) ->
+  lists:map(fun safe_field/1, KVPairs).
+
+-spec safe_field({term(), term()}) -> {atom() | binary(), jsx:json_term()}.
+safe_field({Key, Value}) when is_atom(Key);
+                              is_binary(Key)->
+  {Key, safe_value(Value)};
+safe_field({Key, Value}) when is_list(Key) ->
+  safe_field({list_to_binary(Key), Value}).
+
+-spec safe_value(term()) -> jsx:json_term().
+safe_value(Pid) when is_pid(Pid) ->
+  list_to_binary(pid_to_list(Pid));
+safe_value(List) when is_list(List) ->
+  case io_lib:char_list(List) of
+    true ->
+      list_to_binary(List);
+    false ->
+      lists:map(fun safe_value/1, List)
+  end;
+safe_value(Val) ->
+  Val.
 
 -spec format_timestamp(erlang:timestamp()) -> binary().
 format_timestamp(Ts = {_, _, Ms}) ->
