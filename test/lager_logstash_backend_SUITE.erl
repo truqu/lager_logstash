@@ -135,9 +135,14 @@ assert_not_received(LogRef, Logs) ->
 
 -spec extract_logrefs([map()]) -> sets:set(integer()).
 extract_logrefs(Logs) ->
-  Refs = lists:map( fun (#{fields := #{test_log_ref := LogRef}}) -> LogRef end
-                  , Logs),
+  Refs = lists:filtermap(fun extract_logref/1, Logs),
   sets:from_list(Refs).
+
+-spec extract_logref(map()) -> false | {true, pos_integer()}.
+extract_logref(#{fields := #{test_log_ref := LogRef}}) ->
+  {true, LogRef};
+extract_logref(_) ->
+  false.
 
 -spec log(lager:log_level(), string()) -> pos_integer().
 log(Level, Message) ->
