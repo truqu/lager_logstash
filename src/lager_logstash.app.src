@@ -2,7 +2,7 @@
  [{description, "Logstash backend for lager"},
   {vsn, "0.1.0"},
   {registered, []},
-  {applications, [kernel, stdlib]},
+  {applications, [kernel, stdlib, jsx]},
 
   {licenses, ["https://github.truqu.com/truqu/lager_logstash/blob/develop/LICENSE"]},
   {links, [{"GitHub", "https://github.com/truqu/lager_logstash"}]}
