@@ -85,7 +85,7 @@ format_data(Message, Fields) ->
   AllFields = Defaults ++ safe_fields(Metadata) ++ Fields,
   #{ fields => AllFields
    , '@timestamp' => format_timestamp(lager_msg:timestamp(Message))
-   , message => list_to_binary(lager_msg:message(Message))
+   , message => unicode:characters_to_binary(lager_msg:message(Message))
    }.
 
 -spec safe_fields([{term(), term()}]) -> [{atom() | binary(), jsx:json_term()}].
